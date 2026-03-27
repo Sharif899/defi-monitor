@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OG DeFi Risk Monitor — Powered by OpenGradient</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050709;--surface:#080c10;--card:#0c1016;--border:#151d25;
+  --border2:#1e2a35;--text:#e0e8f0;--muted:#3a5060;--dim:#111820;
+  --green:#00e676;--green-dim:#002210;--green-mid:#00a854;
+  --amber:#ffb300;--amber-dim:#1a1200;
+  --red:#ff3d3d;--red-dim:#1a0606;
+  --blue:#40c4ff;--blue-dim:#001a2a;
+  --mono:'JetBrains Mono',monospace;--sans:'Manrope',sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+
+/* ── Nav ── */
+nav{height:54px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;justify-content:space-between;z-index:10}
+.nav-logo{display:flex;align-items:center;gap:10px}
+.logo-box{width:30px;height:30px;background:linear-gradient(135deg,var(--green),var(--green-mid));border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;color:#000}
+.logo-text{font-size:13px;font-weight:700;letter-spacing:-0.3px}
+.logo-sub{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--dim);padding:2px 7px;border-radius:3px;letter-spacing:0.3px}
+.nav-right{display:flex;align-items:center;gap:14px}
+.live-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--green);background:var(--green-dim);padding:4px 10px;border-radius:20px;border:1px solid rgba(0,230,118,0.2)}
+.pulse-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.nav-btn{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--card);border:1px solid var(--border);padding:5px 12px;border-radius:4px;cursor:pointer;text-decoration:none;transition:all .15s;letter-spacing:.3px}
+.nav-btn:hover{border-color:var(--border2);color:var(--text)}
+.nav-btn.primary{background:var(--green);color:#000;border-color:var(--green);font-weight:600}
+.nav-btn.primary:hover{opacity:.88}
+
+/* ── Layout ── */
+.layout{flex:1;display:grid;grid-template-columns:240px 1fr;overflow:hidden}
+@media(max-width:768px){.layout{grid-template-columns:1fr}}
+
+/* ── Sidebar ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:768px){.sidebar{display:none}}
+.sidebar-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.s-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0}
+.stat-name{font-size:12px;color:var(--muted)}
+.stat-val{font-family:var(--mono);font-size:13px;font-weight:600}
+.stat-val.green{color:var(--green)}
+.stat-val.amber{color:var(--amber)}
+.stat-val.red{color:var(--red)}
+.stat-val.blue{color:var(--blue)}
+.protocol-list{flex:1;overflow-y:auto;padding:8px}
+.protocol-list::-webkit-scrollbar{width:3px}
+.protocol-list::-webkit-scrollbar-thumb{background:var(--border2)}
+.proto-item{padding:8px 10px;border-radius:5px;margin-bottom:4px;border:1px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .15s}
+.proto-item:hover{border-color:var(--border2)}
+.proto-item.selected{border-color:var(--green);background:var(--green-dim)}
+.proto-name{font-size:12px;font-weight:600;margin-bottom:2px}
+.proto-chain{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.5px}
+.proto-risk{font-family:var(--mono);font-size:10px;margin-top:4px}
+.proto-risk.HIGH{color:var(--red)}
+.proto-risk.MEDIUM{color:var(--amber)}
+.proto-risk.LOW{color:var(--green)}
+.sidebar-footer{padding:12px 16px;border-top:1px solid var(--border)}
+.next-scan{font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;justify-content:space-between}
+.next-val{color:var(--green)}
+
+/* ── Main content ── */
+.content{overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2)}
+
+/* ── Stats strip ── */
+.stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
+@media(max-width:640px){.stats-strip{grid-template-columns:repeat(2,1fr)}}
+.stat-cell{background:var(--card);padding:16px 18px}
+.sc-label{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.sc-value{font-family:var(--mono);font-size:24px;font-weight:600;letter-spacing:-1px;line-height:1}
+.sc-value.green{color:var(--green)}
+.sc-value.red{color:var(--red)}
+.sc-value.amber{color:var(--amber)}
+.sc-value.blue{color:var(--blue)}
+.sc-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ── Alert feed ── */
+.feed-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface)}
+.feed-title{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.scan-now-btn{font-family:var(--mono);font-size:10px;letter-spacing:.5px;padding:5px 12px;background:var(--green);color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:600;transition:opacity .15s}
+.scan-now-btn:hover{opacity:.85}
+.scan-now-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.alert-list{flex:1;padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+
+.alert-card{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .15s;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.alert-card:hover{border-color:var(--border2)}
+.alert-card.HIGH{border-left:3px solid var(--red)}
+.alert-card.MEDIUM{border-left:3px solid var(--amber)}
+.alert-card.LOW{border-left:3px solid var(--green)}
+
+.alert-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.alert-left{display:flex;align-items:center;gap:10px}
+.risk-badge{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.5px;padding:3px 8px;border-radius:3px;text-transform:uppercase}
+.risk-badge.HIGH{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,61,61,.3)}
+.risk-badge.MEDIUM{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.3)}
+.risk-badge.LOW{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,.3)}
+.alert-protocol{font-size:14px;font-weight:700;letter-spacing:-.2px}
+.alert-chain{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px}
+.alert-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prob-display{font-family:var(--mono);font-size:18px;font-weight:600;letter-spacing:-1px}
+.prob-display.HIGH{color:var(--red)}
+.prob-display.MEDIUM{color:var(--amber)}
+.prob-display.LOW{color:var(--green)}
+.alert-time{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+.alert-body{padding:0 16px 14px}
+.features-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.feature-chip{font-family:var(--mono);font-size:10px;padding:3px 8px;background:var(--dim);border:1px solid var(--border);border-radius:3px;color:var(--muted)}
+.feature-chip span{color:var(--text)}
+
+.proof-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.verified-chip{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--green);background:var(--green-dim);border:1px solid rgba(0,230,118,.2);padding:3px 8px;border-radius:3px}
+.tx-chip{font-family:var(--mono);font-size:10px;color:var(--blue);cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;padding:3px 8px;background:var(--blue-dim);border:1px solid rgba(64,196,255,.2);border-radius:3px;transition:opacity .15s}
+.tx-chip:hover{opacity:.75}
+.demo-chip{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--dim);border:1px solid var(--border);padding:3px 8px;border-radius:3px}
+.tvl-chip{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--dim);border:1px solid var(--border);padding:3px 8px;border-radius:3px}
+
+/* Empty state */
+.empty-feed{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;gap:12px}
+.empty-icon{font-size:32px}
+.empty-title{font-size:16px;font-weight:700}
+.empty-sub{font-size:13px;color:var(--muted);max-width:320px;line-height:1.6}
+
+/* Loading */
+.loading-row{display:flex;align-items:center;gap:8px;padding:20px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.loading-spinner{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Footer bar */
+.footer-bar{padding:10px 20px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.footer-left{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.footer-right{display:flex;gap:14px}
+.f-link{font-family:var(--mono);font-size:10px;color:var(--muted);text-decoration:none;transition:color .15s}
+.f-link:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">
+    <div class="logo-box">OG</div>
+    <span class="logo-text">DeFi Risk Monitor</span>
+    <span class="logo-sub">AUTO AGENT</span>
+  </div>
+  <div class="nav-right">
+    <div class="live-pill"><div class="pulse-dot"></div>SCANNING LIVE</div>
+    <button class="nav-btn primary" onclick="triggerScan()" id="scanBtnNav">▶ Scan Now</button>
+    <a class="nav-btn" href="https://hub.opengradient.ai" target="_blank">OG Hub ↗</a>
+  </div>
+</nav>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="s-label">// Risk Summary</div>
+      <div class="stat-row"><span class="stat-name">High Risk</span><span class="stat-val red" id="sHigh">—</span></div>
+      <div class="stat-row"><span class="stat-name">Medium Risk</span><span class="stat-val amber" id="sMedium">—</span></div>
+      <div class="stat-row"><span class="stat-name">Low Risk</span><span class="stat-val green" id="sLow">—</span></div>
+      <div class="stat-row"><span class="stat-name">On-Chain Proofs</span><span class="stat-val blue" id="sVerified">—</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="s-label">// Protocols</div>
+    </div>
+    <div class="protocol-list" id="protocolList"></div>
+    <div class="sidebar-footer">
+      <div class="next-scan">
+        <span>Next scan</span>
+        <span class="next-val" id="nextScan">~60 min</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Stats strip -->
+    <div class="stats-strip">
+      <div class="stat-cell">
+        <div class="sc-label">// Total TVL Monitored</div>
+        <div class="sc-value green" id="statTvl">$—</div>
+        <div class="sc-sub">across all protocols</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-label">// Protocols Scanned</div>
+        <div class="sc-value blue" id="statScanned">—</div>
+        <div class="sc-sub">this scan cycle</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-label">// High Risk Alerts</div>
+        <div class="sc-value red" id="statHigh">—</div>
+        <div class="sc-sub">require attention</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-label">// On-Chain Proofs</div>
+        <div class="sc-value green" id="statProofs">—</div>
+        <div class="sc-sub">cryptographically verified</div>
+      </div>
+    </div>
+
+    <!-- Feed header -->
+    <div class="feed-header">
+      <span class="feed-title">// Live Alert Feed — auto-refreshes every 30s</span>
+      <button class="scan-now-btn" id="scanBtn" onclick="triggerScan()">▶ Run Agent Now</button>
+    </div>
+
+    <!-- Alert list -->
+    <div class="alert-list" id="alertList">
+      <div class="loading-row">
+        <div class="loading-spinner"></div>
+        <span>Connecting to OpenGradient agent...</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-bar">
+      <span class="footer-left" id="lastScanText">Last scan: —</span>
+      <div class="footer-right">
+        <a class="f-link" href="https://explorer.opengradient.ai" target="_blank">OG Explorer</a>
+        <a class="f-link" href="https://docs.opengradient.ai" target="_blank">Docs</a>
+        <a class="f-link" href="https://faucet.opengradient.ai" target="_blank">Faucet</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let alerts    = [];
+let stats     = {};
+let refreshId = null;
+
+// ── Format helpers ────────────────────────────────────────────
+function fmtTvl(n) {
+  if (!n || n === 0) return "$—";
+  if (n >= 1e9) return "$" + (n/1e9).toFixed(2) + "B";
+  if (n >= 1e6) return "$" + (n/1e6).toFixed(1) + "M";
+  return "$" + n.toLocaleString();
+}
+
+function fmtTime(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  const now = Date.now();
+  const diff = Math.floor((now - d.getTime()) / 1000);
+  if (diff < 60)   return diff + "s ago";
+  if (diff < 3600) return Math.floor(diff/60) + "m ago";
+  return Math.floor(diff/3600) + "h ago";
+}
+
+function shortHash(h) {
+  if (!h) return null;
+  return h.slice(0,8) + "..." + h.slice(-6);
+}
+
+// ── Fetch alerts from API ─────────────────────────────────────
+async function fetchAlerts() {
+  try {
+    const res  = await fetch("/api/alerts");
+    const data = await res.json();
+    alerts = data.alerts || [];
+    stats  = data.stats  || {};
+    renderDashboard();
+  } catch(e) {
+    console.error("Failed to fetch alerts:", e);
+  }
+}
+
+// ── Trigger a manual scan ─────────────────────────────────────
+async function triggerScan() {
+  const btns = [
+    document.getElementById("scanBtn"),
+    document.getElementById("scanBtnNav"),
+  ];
+  btns.forEach(b => { if(b) { b.disabled = true; b.textContent = "⏳ Scanning..."; } });
+
+  try {
+    const res  = await fetch("/api/monitor", { method: "POST" });
+    const data = await res.json();
+    console.log("Scan result:", data);
+    await fetchAlerts(); // Refresh immediately after scan
+  } catch(e) {
+    console.error("Scan failed:", e);
+  } finally {
+    btns.forEach(b => {
+      if(b) {
+        b.disabled = false;
+        b.textContent = b.id === "scanBtnNav" ? "▶ Scan Now" : "▶ Run Agent Now";
+      }
+    });
+  }
+}
+
+// ── Render dashboard ──────────────────────────────────────────
+function renderDashboard() {
+  // Stats strip
+  const totalTvl = alerts.reduce((s,a) => s + (a.tvl||0), 0);
+  document.getElementById("statTvl").textContent     = fmtTvl(totalTvl);
+  document.getElementById("statScanned").textContent = alerts.length;
+  document.getElementById("statHigh").textContent    = stats.highRisk   ?? alerts.filter(a=>a.riskLevel==="HIGH").length;
+  document.getElementById("statProofs").textContent  = stats.verifiedOnChain ?? alerts.filter(a=>a.verified).length;
+
+  // Sidebar stats
+  document.getElementById("sHigh").textContent    = stats.highRisk   ?? "—";
+  document.getElementById("sMedium").textContent  = stats.mediumRisk ?? "—";
+  document.getElementById("sLow").textContent     = stats.lowRisk    ?? "—";
+  document.getElementById("sVerified").textContent= stats.verifiedOnChain ?? "—";
+
+  // Last scan time
+  if (stats.lastScan) {
+    document.getElementById("lastScanText").textContent =
+      `Last scan: ${fmtTime(stats.lastScan)} · Next: ~${calcNextScan()}min`;
+  }
+
+  // Protocol list (sidebar)
+  const protoMap = {};
+  alerts.forEach(a => {
+    if (!protoMap[a.slug]) protoMap[a.slug] = a;
+  });
+  const protoList = document.getElementById("protocolList");
+  protoList.innerHTML = Object.values(protoMap).map(a => `
+    <div class="proto-item">
+      <div class="proto-name">${a.protocol}</div>
+      <div class="proto-chain">${a.chain} · ${fmtTvl(a.tvl)}</div>
+      <div class="proto-risk ${a.riskLevel}">${a.riskLevel} RISK · ${(a.probability*100).toFixed(1)}%</div>
+    </div>
+  `).join("");
+
+  // Alert list
+  renderAlerts();
+}
+
+function calcNextScan() {
+  const now = new Date();
+  return 60 - now.getMinutes();
+}
+
+function renderAlerts() {
+  const list = document.getElementById("alertList");
+
+  if (alerts.length === 0) {
+    list.innerHTML = `
+      <div class="empty-feed">
+        <div class="empty-icon">🤖</div>
+        <div class="empty-title">Agent is warming up</div>
+        <div class="empty-sub">Click "Run Agent Now" to trigger the first scan. The agent will run automatically every hour.</div>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = alerts.map(alert => `
+    <div class="alert-card ${alert.riskLevel}">
+      <div class="alert-header">
+        <div class="alert-left">
+          <div class="risk-badge ${alert.riskLevel}">${alert.riskLevel}</div>
+          <div>
+            <div class="alert-protocol">${alert.protocol}</div>
+            <div class="alert-chain">${alert.chain} · ${fmtTvl(alert.tvl)} TVL</div>
+          </div>
+        </div>
+        <div class="alert-right">
+          <div class="prob-display ${alert.riskLevel}">${(alert.probability*100).toFixed(1)}%</div>
+          <div class="alert-time">${fmtTime(alert.timestamp)}</div>
+        </div>
+      </div>
+      <div class="alert-body">
+        <div class="features-row">
+          <div class="feature-chip">collateral <span>${alert.features?.collateral_ratio?.toFixed(2)}x</span></div>
+          <div class="feature-chip">borrowed <span>${((alert.features?.borrowed_ratio||0)*100).toFixed(0)}%</span></div>
+          <div class="feature-chip">volatility <span>${((alert.features?.asset_volatility||0)*100).toFixed(1)}%</span></div>
+          <div class="feature-chip">health <span>${alert.features?.health_factor?.toFixed(2)}</span></div>
+          <div class="feature-chip">age <span>${alert.features?.days_since_deposit?.toFixed(0)}d</span></div>
+        </div>
+        <div class="proof-row">
+          ${alert.verified ? `<div class="verified-chip">✓ TEE VERIFIED</div>` : ""}
+          ${alert.txHash ? `
+            <a class="tx-chip" href="${alert.explorerUrl || '#'}" target="_blank">
+              🔗 ${shortHash(alert.txHash)}
+            </a>` : ""}
+          ${alert.isDemo ? `<div class="demo-chip">DEMO DATA</div>` : ""}
+          <div class="tvl-chip">Model: defi_liquidation_risk.onnx</div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ── Auto-refresh every 30 seconds ────────────────────────────
+function startAutoRefresh() {
+  fetchAlerts(); // Initial load
+  refreshId = setInterval(fetchAlerts, 30_000);
+}
+
+// ── Countdown timer ───────────────────────────────────────────
+function startCountdown() {
+  setInterval(() => {
+    document.getElementById("nextScan").textContent =
+      `~${calcNextScan()} min`;
+  }, 60_000);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+startAutoRefresh();
+startCountdown();
+</script>
+</body>
+</html>
