@@ -1,0 +1,8 @@
+{
+  "name": "og-defi-risk-monitor",
+  "version": "1.0.0",
+  "description": "Auto DeFi Risk Monitor powered by OpenGradient verifiable AI inference",
+  "dependencies": {
+    "ethers": "^6.9.0"
+  }
+}
